@@ -1,0 +1,68 @@
+plugins {
+    
+    alias(libs.plugins.android.application)
+}
+
+android {
+    namespace 'zig.cheat.qq'
+    compileSdk 36
+    ndkVersion '29.0.14033849'
+
+    defaultConfig {
+        applicationId 'zig.cheat.qq'
+        minSdk 28
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+        ndk { abiFilters "arm64-v8a" }
+    }
+    
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '4.1.2'
+        }
+    }
+    
+    signingConfigs {
+        release {
+            storeFile file(project.hasProperty('RELEASE_STORE_FILE') ? project.property('RELEASE_STORE_FILE') : project.file("real.keystore"))
+            storePassword project.hasProperty('RELEASE_STORE_PASSWORD') ? project.property('RELEASE_STORE_PASSWORD') : System.getenv("KEYSTORE_PASSWORD")
+            keyAlias project.hasProperty('RELEASE_KEY_ALIAS') ? project.property('RELEASE_KEY_ALIAS') : System.getenv("KEY_ALIAS")
+            keyPassword project.hasProperty('RELEASE_KEY_PASSWORD') ? project.getProperty('RELEASE_KEY_PASSWORD') : System.getenv("KEY_PASSWORD")
+            
+            enableV1Signing true
+            enableV2Signing true
+            enableV3Signing true
+            enableV4Signing true
+        }
+    }
+
+    buildFeatures {
+        viewBinding false
+        buildConfig false
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.android.volley:volley:1.2.1'
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
