@@ -7,6 +7,7 @@
 #include "../include/KittyMemory/KittyInclude.hpp"
 #include "../include/KittyMemory/StealthPatch.h"
 
+
 struct GameConfig {
     bool Hackmap = false;
     bool ShowCoolDown = false;
@@ -54,7 +55,9 @@ Java_zig_cheat_qq_jni_Jni_getFeatures(JNIEnv* env, jclass clazz) {
         oxorany("BUTTON|3|Dump LIB Files|dump_lib_dialog"),
         oxorany("BUTTON|3|Patch Offset Manager|patch_offset_dialog"),
         oxorany("TITLE|3|SIGNATURE BYPASS"),
-        oxorany("BUTTON|3|Signature Manager|signature_manager_dialog")
+        oxorany("BUTTON|3|Signature Manager|signature_manager_dialog"),
+        oxorany("TITLE|3|LUA ENGINE"),
+        oxorany("BUTTON|3|Lua Script|lua_script_dialog")
     };
 
     int total = sizeof(features) / sizeof(features[0]);

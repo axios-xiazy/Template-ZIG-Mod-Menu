@@ -20,10 +20,8 @@ extern "C" {
     __attribute__((visibility("hidden"))) __attribute__((used)) int g_current_gadget_index = 0;
 }
 
-
 static const uintptr_t XOR_KEY = 0xDEADBEEFCAFEBABE; 
 
-// ฟังก์ชันตรวจสอบความปลอดภัยของ Gadget
 bool IsGadgetSafe(uintptr_t addr) {
     if (addr == 0) return false;
     uint32_t instruction = 0;
@@ -82,7 +80,6 @@ void FindPolymorphicGadgets() {
 __attribute__((naked))
 static long raw_syscall_proxy_l6(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
     __asm__ __volatile__(
-        // 1. Setup Arguments
         "mov x8, x0\n"
         "mov x0, x1\n"
         "mov x1, x2\n"

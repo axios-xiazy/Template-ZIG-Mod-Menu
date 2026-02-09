@@ -1,6 +1,21 @@
 package zig.cheat.qq.jni;
 
+import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.Toast;
+
 public class Jni {
+    public static Context context;
+
+    public static void onToast(String msg) {
+        if (context != null) {
+            new Handler(Looper.getMainLooper()).post(() -> 
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            );
+        }
+    }
+
     public static native String[] getFeatures();
     public static native void Callback(int id, boolean check, int value, float value2, String value3);
 
@@ -35,4 +50,7 @@ public class Jni {
     public static native long[] scanPatternAll(String libName, String pattern, int maxResults);
     public static native String exportPatchesJson();
     public static native int importPatchesJson(String json);
+
+    public static native String executeLuaScript(String script);
+    public static native void cleanupLua();
 }

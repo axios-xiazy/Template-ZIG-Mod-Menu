@@ -45,6 +45,7 @@ import java.util.regex.Pattern;
 import zig.cheat.qq.jni.Jni;
 import zig.cheat.qq.ui.Utils;
 import zig.cheat.qq.ui.dialogs.DumpLibDialog;
+import zig.cheat.qq.ui.dialogs.LuaScriptDialog;
 import zig.cheat.qq.ui.dialogs.PatchOffsetDialog;
 import zig.cheat.qq.ui.dialogs.SignatureManagerDialog;
 
@@ -78,6 +79,8 @@ public class Menu {
     private int blinkIndex = 0;
     private boolean isDestroyed = false;
     private View gestureHandle;
+    private WindowManager.LayoutParams handleParams;
+    private android.view.GestureDetector gestureDetector;
     private ContentPanel contentPanel;
     private List<LinearLayout> sidebarItems = new ArrayList<>();
     private View selectionPill;
@@ -106,6 +109,7 @@ public class Menu {
 
     public Menu(Context context) {
         this.context = context;
+        Jni.context = context;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         initBlinkRunnable();
     }
@@ -170,7 +174,7 @@ public class Menu {
         rootContainer = new FrameLayout(context);
         createMenuLayout(d);
         createIslandLayout(d);
-        createGestureHandle(d);
+        createGestureHandle(d, metrics);
 
         int frameWidth = (int)(520 * d);
         FrameLayout.LayoutParams menuLp = new FrameLayout.LayoutParams(frameWidth, FrameLayout.LayoutParams.WRAP_CONTENT);
@@ -223,8 +227,9 @@ public class Menu {
         }
 
         windowManager.addView(rootContainer, windowParams);
+        windowManager.addView(gestureHandle, handleParams);
 
-        android.view.GestureDetector gestureDetector = new android.view.GestureDetector(context, new android.view.GestureDetector.SimpleOnGestureListener() {
+        android.view.GestureDetector rootDetector = new android.view.GestureDetector(context, new android.view.GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
                 if (e1 != null && e2 != null && Math.abs(e2.getY() - e1.getY()) > 100 && Math.abs(vy) > 100) {
@@ -235,51 +240,39 @@ public class Menu {
             }
         });
         rootContainer.setOnTouchListener((v, event) -> {
-            gestureDetector.onTouchEvent(event);
+            rootDetector.onTouchEvent(event);
             return false;
         });
 
         blinkHandler.post(blinkRunnable);
     }
 
-    private void createGestureHandle(float d) {
+    private void createGestureHandle(float d, DisplayMetrics m) {
         FrameLayout handleWrapper = new FrameLayout(context);
+        handleWrapper.setClipChildren(false);
+        handleWrapper.setClipToPadding(false);
 
-        View bar = new View(context);
+        gestureHandle = new View(context);
         GradientDrawable gd = new GradientDrawable();
         gd.setColor(0xAAFFFFFF);
         gd.setCornerRadius(3 * d);
-        bar.setBackground(gd);
+        gestureHandle.setBackground(gd);
 
         FrameLayout.LayoutParams barLp = new FrameLayout.LayoutParams((int)(200 * d), (int)(4 * d), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         barLp.bottomMargin = (int)(5 * d);
-        handleWrapper.addView(bar, barLp);
+        handleWrapper.addView(gestureHandle, barLp);
 
-        WindowManager.LayoutParams handleParams = new WindowManager.LayoutParams(
+        handleParams = new WindowManager.LayoutParams(
             (int)(200 * d), (int)(20 * d),
             WindowManager.LayoutParams.TYPE_APPLICATION,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         );
-        handleParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
         handleParams.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
         handleParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        handleParams.y = 0;
 
-        if (Build.VERSION.SDK_INT >= 30) {
-            Display display = windowManager.getDefaultDisplay();
-            if (display != null) {
-                Display.Mode[] modes = display.getSupportedModes();
-                if (modes != null && modes.length > 0) {
-                    float maxRate = 60.0f;
-                    for (Display.Mode mode : modes) {
-                        if (mode.getRefreshRate() > maxRate) {
-                            maxRate = mode.getRefreshRate();
-                        }
-                    }
-                    handleParams.preferredRefreshRate = maxRate;
-                }
-            }
-        } else if (Build.VERSION.SDK_INT >= 23) {
+        if (Build.VERSION.SDK_INT >= 23) {
             Display display = windowManager.getDefaultDisplay();
             if (display != null) {
                 float rate = display.getRefreshRate();
@@ -289,35 +282,40 @@ public class Menu {
             }
         }
 
-        android.view.GestureDetector handleDetector = new android.view.GestureDetector(context, new android.view.GestureDetector.SimpleOnGestureListener() {
+        gestureDetector = new android.view.GestureDetector(context, new android.view.GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
-                if (e1 != null && e2 != null && e1.getY() - e2.getY() > 10 && vy < -120) {
-                    toggle();
-                    return true;
+                if (e1 != null && e2 != null) {
+                    float diffY = e1.getY() - e2.getY();
+                    if (diffY > 10 && vy < -120) {
+                        toggle();
+                        return true;
+                    }
                 }
                 return false;
             }
         });
 
         handleWrapper.setOnTouchListener(new View.OnTouchListener() {
-            private float initialY;
+            private float initialTouchY;
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                handleDetector.onTouchEvent(event);
+                gestureDetector.onTouchEvent(event);
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        initialY = event.getRawY();
+                        initialTouchY = event.getRawY();
                         return true;
                     case MotionEvent.ACTION_MOVE:
-                        float delta = initialY - event.getRawY();
-                        if (delta > 0) {
-                            bar.setTranslationY(-Math.min(delta, 10 * d));
+                        float deltaY = initialTouchY - event.getRawY();
+                        if (deltaY > 0) {
+                            float limit = 10 * d;
+                            float moveY = -Math.min(deltaY, limit);
+                            gestureHandle.setTranslationY(moveY);
                         }
                         return true;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
-                        bar.animate()
+                        gestureHandle.animate()
                             .translationY(0)
                             .scaleX(1.0f)
                             .scaleY(1.0f)
@@ -330,8 +328,7 @@ public class Menu {
             }
         });
 
-        windowManager.addView(handleWrapper, handleParams);
-        gestureHandle = handleWrapper;
+        this.gestureHandle = handleWrapper;
     }
 
     private void createMenuLayout(float d) {
@@ -475,12 +472,12 @@ public class Menu {
     private void addTabItem(LinearLayout container, String text, String iconPath, final int pageId, float d) {
         try {
             final int idx = sidebarItems.size();
-
             LinearLayout item = new LinearLayout(context);
             item.setOrientation(LinearLayout.HORIZONTAL);
             item.setGravity(Gravity.CENTER_VERTICAL);
             item.setPadding((int)(12 * d), (int)(10 * d), (int)(12 * d), (int)(10 * d));
             item.setClickable(true);
+            item.setBackgroundColor(Color.TRANSPARENT);
 
             FrameLayout iconContainer = new FrameLayout(context);
             LinearLayout.LayoutParams icLp = new LinearLayout.LayoutParams((int)(18 * d), (int)(18 * d));
@@ -492,11 +489,8 @@ public class Menu {
             iconView.setVisibility(View.GONE);
 
             View fallbackView = new View(context);
-            GradientDrawable fbBg = new GradientDrawable();
-            fbBg.setShape(GradientDrawable.OVAL);
             int[] colors = {0xFF3B82F6, 0xFF10B981, 0xFFF59E0B, 0xFFEF4444};
-            fbBg.setColor(colors[idx % colors.length]);
-            fallbackView.setBackground(fbBg);
+            fallbackView.setBackground(Utils.createCircleBg(colors[idx % colors.length]));
             FrameLayout.LayoutParams fbLp = new FrameLayout.LayoutParams((int)(10 * d), (int)(10 * d), Gravity.CENTER);
             fallbackView.setLayoutParams(fbLp);
 
@@ -577,18 +571,41 @@ public class Menu {
         View parent = (View) target.getParent();
         float targetY = parent.getTop() + target.getTop();
         float d = context.getResources().getDisplayMetrics().density;
+        
+        float startWidth = selectionPill.getWidth();
+        float targetWidth = parent.getWidth() - parent.getPaddingLeft() - parent.getPaddingRight() - (12 * d);
+        float startHeight = selectionPill.getHeight();
+        float targetHeight = target.getHeight();
+        float startY = selectionPill.getY();
 
         selectionPill.setVisibility(View.VISIBLE);
+        
         if (animate) {
-            selectionPill.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-            selectionPill.animate().y(targetY).setDuration(250).setInterpolator(EASE_IN_OUT).withEndAction(() -> {
-                selectionPill.setLayerType(View.LAYER_TYPE_NONE, null);
-            }).start();
+            ValueAnimator anim = ValueAnimator.ofFloat(0f, 1f);
+            anim.setDuration(400);
+            anim.setInterpolator(new android.view.animation.OvershootInterpolator(1.2f));
+            anim.addUpdateListener(a -> {
+                float f = (float) a.getAnimatedValue();
+                selectionPill.setY(startY + (targetY - startY) * f);
+                
+                float w = targetWidth;
+                float stretchFactor = (float) Math.sin(f * Math.PI); 
+                if (Math.abs(targetY - startY) > 50 * d) {
+                     w = targetWidth - (10 * d * stretchFactor); 
+                }
+                
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) selectionPill.getLayoutParams();
+                lp.width = (int) w;
+                lp.height = (int) targetHeight;
+                lp.leftMargin = parent.getPaddingLeft();
+                selectionPill.setLayoutParams(lp);
+            });
+            anim.start();
         } else {
             selectionPill.setY(targetY);
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) selectionPill.getLayoutParams();
-            lp.width = parent.getWidth() - parent.getPaddingLeft() - parent.getPaddingRight() - (int)(12 * d);
-            lp.height = target.getHeight();
+            lp.width = (int) targetWidth;
+            lp.height = (int) targetHeight;
             lp.leftMargin = parent.getPaddingLeft();
             selectionPill.setLayoutParams(lp);
             selectionPill.setX(parent.getPaddingLeft());
@@ -819,6 +836,7 @@ public class Menu {
 
         private DumpLibDialog dumpDialog;
         private PatchOffsetDialog patchDialog;
+        private LuaScriptDialog luaDialog;
 
         public ContentPanel(Context context) {
             super(context);
@@ -959,6 +977,7 @@ public class Menu {
             int color = 0xFF3B82F6;
             if (action.contains("dump") || action.contains("Dump")) color = 0xFF8B5CF6;
             else if (action.contains("patch") || action.contains("Patch")) color = 0xFFF59E0B;
+            else if (action.contains("lua") || action.contains("Lua")) color = 0xFF10B981;
             bg.setColor(color);
             bg.setCornerRadius(10 * d);
             btn.setBackground(bg);
@@ -985,6 +1004,13 @@ public class Menu {
                             try {
                                 SignatureManagerDialog sigDialog = new SignatureManagerDialog(activity);
                                 sigDialog.show();
+                            } catch (Exception e) {}
+                            break;
+                        case "lua_script_dialog":
+                            try {
+                                if (luaDialog != null) luaDialog.dismiss();
+                                luaDialog = new LuaScriptDialog(activity);
+                                luaDialog.show();
                             } catch (Exception e) {}
                             break;
                     }
@@ -1033,6 +1059,8 @@ public class Menu {
             addView(sw);
         }
     }
+
+
 
     private class SwitchView extends View {
         private boolean isChecked = false;
@@ -1136,6 +1164,9 @@ public class Menu {
         private Paint progressPaint;
         private Paint thumbPaint;
         private RectF trackRect;
+        
+        private float thumbScale = 1.0f;
+        private ValueAnimator touchAnimator;
 
         public interface OnProgressChangeListener {
             void onProgressChanged(int value);
@@ -1151,21 +1182,35 @@ public class Menu {
 
         private void init() {
             float d = getResources().getDisplayMetrics().density;
-
-            setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int)(36 * d)));
+            setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int)(40 * d)));
 
             trackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            trackPaint.setColor(0xFF333333);
+            trackPaint.setColor(0xFF252525);
+            trackPaint.setStyle(Paint.Style.FILL);
 
             progressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             progressPaint.setColor(COLOR_ACCENT_BLUE);
+            progressPaint.setStyle(Paint.Style.FILL);
+            progressPaint.setStrokeCap(Paint.Cap.ROUND);
 
             thumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             thumbPaint.setColor(0xFFFFFFFF);
-            thumbPaint.setShadowLayer(4 * d, 0, 2 * d, 0x80000000);
+            thumbPaint.setShadowLayer(6 * d, 0, 2 * d, 0x40000000);
             setLayerType(LAYER_TYPE_SOFTWARE, thumbPaint);
 
             trackRect = new RectF();
+        }
+        
+        private void animateThumb(boolean pressed) {
+            if (touchAnimator != null) touchAnimator.cancel();
+            touchAnimator = ValueAnimator.ofFloat(thumbScale, pressed ? 1.4f : 1.0f);
+            touchAnimator.setDuration(200);
+            touchAnimator.setInterpolator(new android.view.animation.OvershootInterpolator());
+            touchAnimator.addUpdateListener(a -> {
+                thumbScale = (float) a.getAnimatedValue();
+                invalidate();
+            });
+            touchAnimator.start();
         }
 
         @Override
@@ -1176,28 +1221,31 @@ public class Menu {
             if (w == 0 || h == 0) return;
 
             float centerY = h / 2f;
-            float padding = 7 * d + (4 * d);
+            float padding = 12 * d;
             float availableWidth = w - (2 * padding);
+            float trackHeight = 6 * d;
 
-            trackRect.set(padding, centerY - (2 * d), w - padding, centerY + (2 * d));
-            canvas.drawRoundRect(trackRect, 2 * d, 2 * d, trackPaint);
+            trackRect.set(padding, centerY - (trackHeight / 2), w - padding, centerY + (trackHeight / 2));
+            canvas.drawRoundRect(trackRect, trackHeight / 2, trackHeight / 2, trackPaint);
 
             float progressX = padding + (availableWidth * progress);
-            RectF pRect = new RectF(padding, centerY - (2 * d), progressX, centerY + (2 * d));
-            canvas.drawRoundRect(pRect, 2 * d, 2 * d, progressPaint);
+            RectF pRect = new RectF(padding, centerY - (trackHeight / 2), progressX, centerY + (trackHeight / 2));
+            canvas.drawRoundRect(pRect, trackHeight / 2, trackHeight / 2, progressPaint);
 
-            canvas.drawCircle(progressX, centerY, 7 * d, thumbPaint);
+            float currentThumbSize = 8 * d * thumbScale;
+            canvas.drawCircle(progressX, centerY, currentThumbSize, thumbPaint);
         }
 
         @Override
         public boolean onTouchEvent(MotionEvent event) {
             float d = getResources().getDisplayMetrics().density;
-            float padding = 7 * d + (4 * d);
+            float padding = 12 * d;
             float w = getWidth();
             float availableWidth = w - (2 * padding);
 
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
+                    animateThumb(true);
                 case MotionEvent.ACTION_MOVE:
                     if (max <= min) return false;
                     float x = event.getX();
@@ -1209,6 +1257,10 @@ public class Menu {
                         listener.onProgressChanged(min + (int)(progress * (max - min)));
                     }
                     getParent().requestDisallowInterceptTouchEvent(true);
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    animateThumb(false);
                     return true;
             }
             return super.onTouchEvent(event);

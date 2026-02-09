@@ -34,6 +34,19 @@ public class Utils {
         gd.setStroke((int)(strokeWidthDp * d), strokeColor);
         return gd;
     }
+
+    public static GradientDrawable createGradientBg(int[] colors, float radiusDp, Context context) {
+        GradientDrawable gd = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
+        gd.setCornerRadius(radiusDp * context.getResources().getDisplayMetrics().density);
+        return gd;
+    }
+
+    public static GradientDrawable createCircleBg(int color) {
+        GradientDrawable gd = new GradientDrawable();
+        gd.setColor(color);
+        gd.setShape(GradientDrawable.OVAL);
+        return gd;
+    }
     
     public static int dpToPx(float dp, Context context) {
         return (int)(dp * context.getResources().getDisplayMetrics().density);
