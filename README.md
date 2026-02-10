@@ -7,14 +7,14 @@
 **Android Mod Menu Framework**
 
 <p>
-  <img src="https://img.shields.io/badge/Android-9.0+-3DDC84?logo=android&logoColor=white" alt="Android">
-  <img src="https://img.shields.io/badge/C++-20-00599C?logo=c%2B%2B&logoColor=white" alt="C++">
-  <img src="https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white" alt="Java">
-  <img src="https://img.shields.io/badge/NDK-r29-8CA1AF?logo=android&logoColor=white" alt="NDK">
+  <img src="https://img.shields.io/badge/Android-9.0+-3DDC84?logo=android&logoColor=white" alt="Android"><br>
+  <img src="https://img.shields.io/badge/C++-20-00599C?logo=c%2B%2B&logoColor=white" alt="C++"><br>
+  <img src="https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white" alt="Java"><br>
+  <img src="https://img.shields.io/badge/NDK-r29-8CA1AF?logo=android&logoColor=white" alt="NDK"><br>
 </p>
 
 <p>
-  🎨 Dynamic Island UI &nbsp;•&nbsp; 🔒 Anti-Detection &nbsp;•&nbsp; ⚡ Zero-Latency
+  🎨 Dynamic Island UI<br>🔒 Anti-Detection<br>⚡ Zero-Latency
 </p>
 </div>
 
