@@ -28,6 +28,8 @@
 - [x] Signature Bypass
 - [x] Lua 5.4 Scripting Engine
 - [x] Script Encryption (AES-256-CBC)
+- [x] UI Run on 60-90-120-144-165 ++
+- [x] Patch offset with kernel level ( non root )
 
 ---
 
