@@ -20,8 +20,6 @@
 
 ---
 
-## PALLADIUM
-
 ## Features
 
 - [x] Memory Patching
